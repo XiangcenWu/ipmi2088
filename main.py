@@ -1,6 +1,5 @@
 import re
 from pathlib import Path
-import matplotlib.pyplot as plt
 from PIL import Image
 from sklearn.model_selection import train_test_split
 from PIL import Image
@@ -120,18 +119,18 @@ Seg_model = UNet(
     spatial_dims=2,
     in_channels=3,
     out_channels=1,
-    channels=(16, 32, 64, 128, 256),
+    channels=(64, 128, 256, 512, 1024),
     strides=(2, 2, 1, 1),
-    num_res_units=2,
+    num_res_units=3,
     dropout = 0.2
 ).to(device)
 
 Sel_model = SelectionNet(
-    DS_dim_list=[3, 32, 128, 256, 512, 1024], 
-    num_resblock=1, 
-    transformer_input_dim=1024, 
+    DS_dim_list=[3, 64, 256, 512, 1024, 2048], 
+    num_resblock=2, 
+    transformer_input_dim=2048, 
     num_head=8,
-    dropout=0,
+    dropout=0.3,
     num_transformer=1
 ).to(device)
 
@@ -141,7 +140,7 @@ optimizer_sel = torch.optim.Adam(Sel_model.parameters(), lr = 1e-5)
 
 
 dummy_list = []
-for b in range(100):
+for b in range(5000):
     seg_loss = train_seg_net_baseon_sel_net(args.num_sequence, args.num_selection, 0.5, 0.5, Seg_model, Sel_model, Seg_loader, optimizer, loss_function, device=device)
     sel_loss = train_sel_net_baseon_seg_net(Sel_model, Seg_model, Meta_val_loader, optimizer_sel, device=device)
     all_p, target_p, rand_p = eval_sel_net(args.num_sequence, args.num_selection, Seg_model, Sel_model, test_loader,device=device)
@@ -149,4 +148,7 @@ for b in range(100):
     save = torch.tensor([seg_loss, sel_loss, all_p, target_p, rand_p])
     print(save)
     dummy_list.append(save)
-    torch.save(dummy_list, './saved_value_' + args.nickname + '.pt')
+    torch.save(torch.stack(dummy_list), './saved_value_' + args.nickname + '.pt')
+
+    torch.save(Seg_model.state_dict(), './seg_' + args.nickname + '.pt')
+    torch.save(Sel_model.state_dict(), './sel_' + args.nickname + '.pt')

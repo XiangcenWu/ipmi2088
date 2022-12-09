@@ -206,8 +206,9 @@ def test_loss_function():
     performance = torch.tensor([0.9, 0.6, 0.3, 0.2, 0.7676]).view(-1, 1)
     print(mmd_onehot_loss(score, performance), weighted_avg_loss(score, performance))
 
-pass
-def train_sel_net_baseon_seg_net(sel_model, seg_model, sel_loader, sel_optimizer, sel_loss_function=mmd_onehot_loss, device='cpu'):
+
+
+def train_sel_net_baseon_seg_net(sel_model, seg_model, sel_loader, sel_optimizer, device='cpu'):
     # remember the loader should drop the last batch to prevent differenct sequence number in the last batch
     sel_model.train()
     seg_model.eval()
@@ -222,7 +223,7 @@ def train_sel_net_baseon_seg_net(sel_model, seg_model, sel_loader, sel_optimizer
             seg_output = seg_model(img)
             performance = dice_metric(seg_output, label, sigmoid=True, mean=False)
         score = sel_model(img)
-        loss = sel_loss_function(score, performance, device=device)
+        loss = mmd(score, performance, sigma=3.)
         # backward and zerograd
         loss.backward()
 
