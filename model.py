@@ -42,7 +42,7 @@ class SelectionNet(nn.Module):
         # print(feature.shape)
         feature = self.transformer(feature)
         # print(feature.shape)
-        return self.output(feature).squeeze(0).permute(0, 1)
+        return self.output(feature).squeeze(0).view(-1, 1)
 
 
 

@@ -60,8 +60,8 @@ def data_path_list(root_dir):
 imgs_list, labels_list = data_path_list(root_dir)
 
 
-meta_train_list, meta_val_list, meta_train_label_list, meta_val_label_list = train_test_split(imgs_list, labels_list, test_size=120, train_size=90)
-meta_val_list, holdout_list, meta_val_label_list, holdout_label_list = train_test_split(meta_val_list, meta_val_label_list, test_size=30, train_size=90)
+meta_train_list, meta_val_list, meta_train_label_list, meta_val_label_list = train_test_split(imgs_list, labels_list, test_size=120, train_size=90, random_state=25)
+meta_val_list, holdout_list, meta_val_label_list, holdout_label_list = train_test_split(meta_val_list, meta_val_label_list, test_size=30, train_size=90, random_state=25)
 
 print(holdout_list[12], holdout_label_list[12])
 
@@ -111,9 +111,9 @@ Holdout_test_dataset = Dataset(holdout_list, holdout_label_list, basic_transform
 
 
 
-Seg_loader = DataLoader(Seg_dataset, batch_size=args.num_sequence, shuffle=args.shuffle)
-Meta_val_loader = DataLoader(Meta_val_dataset, batch_size=args.num_sequence, shuffle=args.shuffle)
-test_loader = DataLoader(Holdout_test_dataset, batch_size=args.num_sequence, shuffle=args.shuffle)
+Seg_loader = DataLoader(Seg_dataset, batch_size=args.num_sequence, shuffle=args.shuffle, drop_last=True)
+Meta_val_loader = DataLoader(Meta_val_dataset, batch_size=args.num_sequence, shuffle=args.shuffle, drop_last=True)
+test_loader = DataLoader(Holdout_test_dataset, batch_size=args.num_sequence, shuffle=args.shuffle, drop_last=True)
 
 Seg_model = UNet(
     spatial_dims=2,
@@ -143,12 +143,14 @@ dummy_list = []
 for b in range(5000):
     seg_loss = train_seg_net_baseon_sel_net(args.num_sequence, args.num_selection, 0.5, 0.5, Seg_model, Sel_model, Seg_loader, optimizer, loss_function, device=device)
     sel_loss = train_sel_net_baseon_seg_net(Sel_model, Seg_model, Meta_val_loader, optimizer_sel, device=device)
-    all_p, target_p, rand_p = eval_sel_net(args.num_sequence, args.num_selection, Seg_model, Sel_model, test_loader,device=device)
+    # all_p, target_p, rand_p = eval_sel_net(args.num_sequence, args.num_selection, Seg_model, Sel_model, test_loader,device=device)
 
-    save = torch.tensor([seg_loss, sel_loss, all_p, target_p, rand_p])
+    save = torch.tensor([seg_loss, sel_loss])
     print(save)
     dummy_list.append(save)
     torch.save(torch.stack(dummy_list), './saved_value_' + args.nickname + '.pt')
 
     torch.save(Seg_model.state_dict(), './seg_' + args.nickname + '.pt')
     torch.save(Sel_model.state_dict(), './sel_' + args.nickname + '.pt')
+
+
