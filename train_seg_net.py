@@ -57,12 +57,14 @@ def data_path_list(root_dir):
 
 
 imgs_list, labels_list = data_path_list(root_dir)
-
+print(len(imgs_list))
 
 meta_train_list, meta_val_list, meta_train_label_list, meta_val_label_list = train_test_split(imgs_list, labels_list, test_size=120, train_size=90, random_state=25)
 meta_val_list, holdout_list, meta_val_label_list, holdout_label_list = train_test_split(meta_val_list, meta_val_label_list, test_size=30, train_size=90, random_state=25)
 
 print(holdout_list[12], holdout_label_list[12])
+print(meta_val_list[12], meta_val_label_list[12])
+print(meta_train_list[12], meta_train_label_list[12])
 
 
 
@@ -110,6 +112,7 @@ Holdout_test_dataset = Dataset(holdout_list, holdout_label_list, basic_transform
 
 
 
+Train_Seg_loader = DataLoader(Seg_dataset, batch_size=args.num_sequence, shuffle=args.shuffle, drop_last=True)
 Meta_val_loader = DataLoader(Meta_val_dataset, batch_size=args.num_sequence, shuffle=args.shuffle, drop_last=True)
 test_loader = DataLoader(Holdout_test_dataset, batch_size=args.num_sequence, shuffle=args.shuffle, drop_last=True)
 
@@ -122,9 +125,8 @@ Seg_model = UNet(
     num_res_units=3,
     dropout = 0.2
 )
-Seg_model.load_state_dict(torch.load("/home/xiangcen/ipmi2088/before_meeting/Seg_modelfix_v2.pt", map_location=device))
 Seg_model.to(device)
-Seg_model.eval()
+
 
 Sel_model = SelectionNet(
     DS_dim_list=[3, 64, 256, 512, 1024, 2048], 
@@ -134,20 +136,22 @@ Sel_model = SelectionNet(
     dropout=0.1,
     num_transformer=6
 )
-# Sel_model.load_state_dict(torch.load("/home/xiangcen/ipmi2088/sel_fix_seg_jicv2.pt", map_location=device))
 Sel_model.to(device)
 
+loss_function = DiceLoss(include_background=True, to_onehot_y=False, sigmoid=True, softmax=False)
+optimizer_seg = torch.optim.Adam(Seg_model.parameters(), lr = 1e-5)
 optimizer_sel = torch.optim.Adam(Sel_model.parameters(), lr = 1e-5)
 
 
-dummy_list = []
-for b in range(3000):
-    sel_loss = train_sel_net_baseon_seg_net(Sel_model, Seg_model, Meta_val_loader, optimizer_sel, device=device)
-    sel_loss_test = eval_sel_net_baseon_seg_net(Sel_model, Seg_model, test_loader, device=device)
 
-    save = torch.tensor([sel_loss, sel_loss_test])
+# train seg net
+dummy_list = []
+for b in range(600):
+    seg_loss = train_seg_net(Seg_model, Train_Seg_loader, optimizer_seg, loss_function, device=device)
+    seg_loss_test = evaluate_seg_net(Seg_model, test_loader, device=device)
+
+    save = torch.tensor([seg_loss, seg_loss_test])
     print(save)
     dummy_list.append(save)
-    torch.save(torch.stack(dummy_list), './saved_value_' + args.nickname + '.pt')
-
-    torch.save(Sel_model.state_dict(), './sel_' + args.nickname + '.pt')
+    torch.save(torch.stack(dummy_list), './before_meeting/segloss_' + args.nickname + '.pt')
+torch.save(Seg_model.state_dict(), './before_meeting/Seg_model' + args.nickname + '.pt')

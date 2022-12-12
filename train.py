@@ -198,7 +198,7 @@ def train_sel_net_baseon_seg_net(sel_model, seg_model, sel_loader, sel_optimizer
         score = sel_model(img).view(-1, 1)
         
         loss = mmd(score, convert(performance), sigma=3.)
-        print(score, convert(performance))
+        print(score)
         # backward and zerograd
         loss.backward()
 
